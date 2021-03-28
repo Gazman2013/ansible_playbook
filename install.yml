@@ -1,0 +1,99 @@
+---
+- hosts: [all]
+  tasks:
+  - name: add user
+    user:
+      name: user_test
+      shell: /bin/bash
+      home: /home/user_test
+      password: "aslhiwueh7868hsd"
+      state: present
+
+  - name: Create file
+    copy:
+      content: Hello world!
+      dest: /home/user_test/hello.txt
+      owner: user_test
+      mode: 0777
+
+  - name: Cores
+    setup:
+      filter: ansible_processor_cores
+
+  - name: Install nginx
+    apt:
+      name: nginx
+      update_cache: yes
+      state: latest
+
+  - name: Restart nginx
+    service:
+      name: nginx
+      state: restarted
+
+  - name: Check nginx status
+    command: service nginx status
+    args:
+      warn: false
+
+  - name: install vsftpd
+    apt:
+      name: vsftpd
+      update_cache: no
+      state: present
+
+  - name: Delete config
+    file:
+      path: /etc/vsftpd.conf
+      state: absent
+
+  - name: config
+    blockinfile:
+      path: /etc/vsftpd.conf
+      create: yes
+      marker: ""
+      block: |
+        listen=YES
+        anonymous_enable=YES
+        ftpd_banner=test banner change
+  - name: restart vsftpd
+    service:
+      name: vsftpd
+      state: restarted
+
+  - name: Install aptitude using apt
+    apt: name=aptitude state=latest update_cache=yes force_apt_get=yes
+
+  - name: Install required system packages
+    apt: name={{ item }} state=latest update_cache=yes
+    loop: [ 'apt-transport-https', 'ca-certificates', 'curl', 'software-properties-common', 'python3-pip', 'virtualenv', 'python3-setuptools', 'python-setuptools']
+
+  - name: Add Docker GPG apt Key
+    apt_key:
+      url: https://download.docker.com/linux/ubuntu/gpg
+      state: present
+
+  - name: Add Docker Repository
+    apt_repository:
+      repo: deb https://download.docker.com/linux/ubuntu xenial stable
+      state: present
+
+  - name: Update apt and install docker-ce
+    apt: update_cache=yes name=docker-ce state=latest
+
+  - name: Install Docker Module for Python
+    pip:
+      name: docker
+
+  - name: Pull default Docker image
+    docker_image:
+      name: ubuntu
+      source: pull
+
+  - name: Create default containers
+    docker_container:
+      name: "container{{ item }}"
+      image: ubuntu
+      command: /bin/bash
+      state: present
+    with_sequence: count=3
